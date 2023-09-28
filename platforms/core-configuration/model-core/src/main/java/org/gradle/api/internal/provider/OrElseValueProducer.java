@@ -61,6 +61,20 @@ class OrElseValueProducer implements ValueSupplier.ValueProducer {
         }
     }
 
+    @Override
+    public void visitProducerExtras(Action<? super ValueProducerExtra> visitor) {
+        if (!isMissing(left)) {
+            if (leftProducer.isKnown()) {
+                leftProducer.visitProducerExtras(visitor);
+            }
+            return;
+        }
+        if (right != null && rightProducer.isKnown() && !isMissing(right)) {
+            rightProducer.visitProducerExtras(visitor);
+        }
+
+    }
+
     private boolean isMissing(ProviderInternal<?> provider) {
         return provider.calculateExecutionTimeValue().isMissing();
     }
