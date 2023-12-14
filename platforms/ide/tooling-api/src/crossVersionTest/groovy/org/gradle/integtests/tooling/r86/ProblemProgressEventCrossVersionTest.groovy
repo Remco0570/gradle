@@ -96,6 +96,9 @@ class ProblemProgressEventCrossVersionTest extends ToolingApiSpecification {
         thrown(BuildException)
         def problems = listener.problems.collect { new JsonSlurper().parseText(it.json) }
         problems.size() == 2
+        problems.every{
+            it == [:]
+        }
     }
 
     @ToolingApiVersion(">=8.6")
@@ -127,15 +130,10 @@ class ProblemProgressEventCrossVersionTest extends ToolingApiSpecification {
 
             tasks.register("reportProblem", ProblemReportingTask)
         """
-        ProblemProgressListener listener = new ProblemProgressListener()
 
         when:
-        withConnection { connection ->
-            connection.newBuild().forTasks('reportProblem')
-                .addProgressListener(listener)
-                .run()
-        }
-        def problems = listener.problems.collect {  (ProblemDescriptor) it}
+
+        def problems = runTask()
 
         then:
         problems.size() == 1
@@ -148,10 +146,11 @@ class ProblemProgressEventCrossVersionTest extends ToolingApiSpecification {
         problems[0].severity == Severity.WARNING
         problems[0].locations.size() == 2
         problems[0].locations[0] instanceof LineInFileLocation
-        (problems[0].locations[0] as LineInFileLocation).path == '/tmp/foo'
-        (problems[0].locations[0] as LineInFileLocation).line == 1
-        (problems[0].locations[0] as LineInFileLocation).column == 2
-        (problems[0].locations[0] as LineInFileLocation).length == 3
+        def lineInFileLocation = problems[0].locations[0] as LineInFileLocation
+        lineInFileLocation.path == '/tmp/foo'
+        lineInFileLocation.line == 1
+        lineInFileLocation.column == 2
+        lineInFileLocation.length == 3
         problems[0].locations[1] instanceof TaskPathLocation
         (problems[0].locations[1] as TaskPathLocation).buildTreePath == ':reportProblem'
         problems[0].documentationLink.url == expecteDocumentation
@@ -163,6 +162,16 @@ class ProblemProgressEventCrossVersionTest extends ToolingApiSpecification {
         detailsConfig              | expectedDetails | documentationConfig                         | expecteDocumentation
         '.details("long message")' | "long message"  | '.documentedAt("https://docs.example.org")' | 'https://docs.example.org'
         ''                         | null            | ''                                          | null
+    }
+
+    def runTask(){
+        ProblemProgressListener listener = new ProblemProgressListener()
+        withConnection { connection ->
+            connection.newBuild().forTasks('reportProblem')
+                .addProgressListener(listener)
+                .run()
+        }
+        return listener.problems.collect {  (ProblemDescriptor) it}
     }
 
     @ToolingApiVersion(">=8.6")
@@ -189,15 +198,9 @@ class ProblemProgressEventCrossVersionTest extends ToolingApiSpecification {
 
             tasks.register("reportProblem", ProblemReportingTask)
         """
-        ProblemProgressListener listener = new ProblemProgressListener()
 
         when:
-        withConnection { connection ->
-            connection.newBuild().forTasks('reportProblem')
-                .addProgressListener(listener)
-                .run()
-        }
-        def problems = listener.problems.collect { (ProblemDescriptor) it }
+        def problems = runTask()
 
         then:
         problems.size() == 1
@@ -229,15 +232,10 @@ class ProblemProgressEventCrossVersionTest extends ToolingApiSpecification {
 
             tasks.register("reportProblem", ProblemReportingTask)
         """
-        ProblemProgressListener listener = new ProblemProgressListener()
 
         when:
-        withConnection { connection ->
-            connection.newBuild().forTasks('reportProblem')
-                .addProgressListener(listener)
-                .run()
-        }
-        def problems = listener.problems.collect { (ProblemDescriptor) it }
+
+        def problems = runTask()
 
         then:
         problems.size() == 1
@@ -272,15 +270,9 @@ class ProblemProgressEventCrossVersionTest extends ToolingApiSpecification {
 
             tasks.register("reportProblem", ProblemReportingTask)
         """
-        ProblemProgressListener listener = new ProblemProgressListener()
 
         when:
-        withConnection { connection ->
-            connection.newBuild().forTasks('reportProblem')
-                .addProgressListener(listener)
-                .run()
-        }
-        def problems = listener.problems.collect { (ProblemDescriptor) it }
+        def problems = runTask()
 
         then:
         problems.size() == 1
@@ -358,15 +350,9 @@ class ProblemProgressEventCrossVersionTest extends ToolingApiSpecification {
 
             tasks.register("reportProblem", ProblemReportingTask)
         """
-        ProblemProgressListener listener = new ProblemProgressListener()
 
         when:
-        withConnection { connection ->
-            connection.newBuild().forTasks('reportProblem')
-                .addProgressListener(listener)
-                .run()
-        }
-        def problems = listener.problems.collect { (ProblemDescriptor) it }
+        def problems = runTask()
 
         then:
         problems.size() == 1
@@ -403,17 +389,11 @@ class ProblemProgressEventCrossVersionTest extends ToolingApiSpecification {
 
             tasks.register("reportProblem", ProblemReportingTask)
         """
-        ProblemProgressListener listener = new ProblemProgressListener()
 
         when:
-        withConnection { connection ->
-            connection.newBuild().forTasks('reportProblem')
-                .addProgressListener(listener)
-                .run()
-        }
+        def problems = runTask()
 
         then:
-        def problems = listener.problems
         problems.size() == 2
 
 

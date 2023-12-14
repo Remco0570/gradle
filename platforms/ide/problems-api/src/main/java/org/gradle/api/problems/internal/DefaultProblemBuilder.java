@@ -79,12 +79,12 @@ public class DefaultProblemBuilder implements InternalProblemBuilder {
 
         return new DefaultProblem(
             label,
-            DefaultProblemBuilder.this.getSeverity(DefaultProblemBuilder.this.getSeverity()),
+            this.getSeverity(),
             locations,
             docLink,
             details,
             solutions,
-            DefaultProblemBuilder.this.getExceptionForProblemInstantiation(),
+            this.getExceptionForProblemInstantiation(),
             problemCategory,
             additionalData
         );
@@ -115,13 +115,6 @@ public class DefaultProblemBuilder implements InternalProblemBuilder {
 
     public RuntimeException getExceptionForProblemInstantiation() {
         return getException() == null && collectLocation ? new RuntimeException() : getException();
-    }
-
-    protected Severity getSeverity(@Nullable Severity severity) {
-        if (severity != null) {
-            return severity;
-        }
-        return getSeverity();
     }
 
     protected Severity getSeverity() {

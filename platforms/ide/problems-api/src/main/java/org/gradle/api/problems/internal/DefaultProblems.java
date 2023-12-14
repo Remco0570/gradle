@@ -40,10 +40,6 @@ public class DefaultProblems implements InternalProblems {
         internalReporter = createReporter(DefaultProblemCategory.GRADLE_CORE_NAMESPACE, emitter, transformers);
     }
 
-    public void setEmitter(ProblemEmitter emitter) {
-        this.emitter = emitter;
-    }
-
     @Override
     public ProblemReporter forNamespace(String namespace) {
         if (DefaultProblemCategory.GRADLE_CORE_NAMESPACE.equals(namespace)) {
