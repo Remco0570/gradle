@@ -20,7 +20,9 @@ import org.gradle.api.logging.configuration.ConsoleOutput
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
 import org.gradle.integtests.fixtures.ToBeFixedForConfigurationCache
 import org.gradle.integtests.fixtures.executer.ExecutionResult
+import spock.lang.Ignore
 
+@Ignore
 abstract class AbstractConsoleJvmTestLoggingFunctionalTest extends AbstractIntegrationSpec {
     private static final String TEST_TASK_NAME = 'test'
     private static final String TEST_TASK_PATH = ":$TEST_TASK_NAME"

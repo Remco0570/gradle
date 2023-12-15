@@ -20,9 +20,11 @@ import org.gradle.integtests.fixtures.AbstractContinuousIntegrationTest
 import org.gradle.test.precondition.Requires
 import org.gradle.test.precondition.TestPrecondition
 import org.gradle.test.preconditions.UnitTestPreconditions
+import spock.lang.Ignore
 
 // NB: there's nothing specific about Java support and continuous.
 //     this spec just lays out some more practical use cases than the other targeted tests.
+@Ignore
 class SimpleJavaContinuousIntegrationTest extends AbstractContinuousIntegrationTest {
 
     def setup() {

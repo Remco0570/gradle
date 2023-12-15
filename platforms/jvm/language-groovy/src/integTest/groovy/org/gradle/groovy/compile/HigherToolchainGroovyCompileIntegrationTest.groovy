@@ -28,4 +28,9 @@ class HigherToolchainGroovyCompileIntegrationTest extends AbstractToolchainGroov
             it.languageVersion > Jvm.current().javaVersion && JavaVersion.VERSION_16.isCompatibleWith(it.languageVersion)
         }
     }
+
+    def "should fail"() {
+        expect:
+        false
+    }
 }
