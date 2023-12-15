@@ -45,7 +45,6 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
@@ -58,7 +57,7 @@ public class DefaultTaskInputs implements TaskInputsInternal {
     private final TaskMutator taskMutator;
     private final PropertyWalker propertyWalker;
     private final FileCollectionFactory fileCollectionFactory;
-    private final List<TaskInputPropertyRegistration> registeredProperties = new ArrayList<>();
+    private final ArrayList<TaskInputPropertyRegistration> registeredProperties = new ArrayList<>();
     private final FilePropertyContainer<TaskInputFilePropertyRegistration> registeredFileProperties = FilePropertyContainer.create();
     private final TaskInputs deprecatedThis;
 
@@ -99,6 +98,12 @@ public class DefaultTaskInputs implements TaskInputsInternal {
         for (TaskInputPropertyRegistration registration : registeredProperties) {
             visitor.visitInputProperty(registration.getPropertyName(), registration.getValue(), registration.isOptional());
         }
+    }
+
+    // performance optimization
+    @Override
+    public void reserveProperties(int size) {
+        registeredProperties.ensureCapacity(registeredProperties.size() + size);
     }
 
     @Override

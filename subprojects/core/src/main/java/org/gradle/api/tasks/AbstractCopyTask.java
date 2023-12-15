@@ -89,6 +89,8 @@ public abstract class AbstractCopyTask extends ConventionTask implements CopySpe
                 .ignoreEmptyDirectories(false)
                 .skipWhenEmpty();
 
+            getInputs().reserveProperties(8);
+
             getInputs().property(specPropertyName + ".destPath", (Callable<String>) () -> resolver.getDestPath().getPathString());
             getInputs().property(specPropertyName + ".caseSensitive", (Callable<Boolean>) spec::isCaseSensitive);
             getInputs().property(specPropertyName + ".includeEmptyDirs", (Callable<Boolean>) spec::getIncludeEmptyDirs);
@@ -98,7 +100,7 @@ public abstract class AbstractCopyTask extends ConventionTask implements CopySpe
             getInputs().property(specPropertyName + ".filePermissions", spec.getFilePermissions().map(FilePermissions::toUnixNumeric))
                 .optional(true);
             getInputs().property(specPropertyName + ".filteringCharset", (Callable<String>) spec::getFilteringCharset);
-            //getInputs().property(specPropertyName + ".linksStrategy", spec.getLinksStrategy()).optional(true);
+            getInputs().property(specPropertyName + ".linksStrategy", spec.getLinksStrategy()).optional(true);
         });
         this.getOutputs().doNotCacheIf(
             "Has custom actions",
