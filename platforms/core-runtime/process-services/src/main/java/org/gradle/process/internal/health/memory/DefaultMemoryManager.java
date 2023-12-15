@@ -80,11 +80,11 @@ public class DefaultMemoryManager implements MemoryManager, Stoppable {
 
     private void start() {
         scheduler.scheduleAtFixedRate(new MemoryCheck(), STATUS_INTERVAL_SECONDS, STATUS_INTERVAL_SECONDS, TimeUnit.SECONDS);
-        LOGGER.debug("Memory status broadcaster started");
+        LOGGER.warn("Memory status broadcaster started");
         if (osMemoryStatusSupported) {
             addListener(osMemoryStatusListener);
         } else {
-            LOGGER.info("This JVM does not support getting OS memory, so no OS memory status updates will be broadcast");
+            LOGGER.warn("This JVM does not support getting OS memory, so no OS memory status updates will be broadcast");
         }
     }
 
@@ -105,19 +105,21 @@ public class DefaultMemoryManager implements MemoryManager, Stoppable {
                     currentOsMemoryStatus = null;
                 }
             } else {
-                LOGGER.debug("There is no current snapshot of OS memory available - memory cannot be freed until a new memory status update occurs");
+                LOGGER.warn("There is no current snapshot of OS memory available - memory cannot be freed until a new memory status update occurs");
             }
         }
     }
 
     private boolean freeSpecificMemory(OsMemoryStatusAspect status, long memoryAmountBytes) {
         if (status instanceof OsMemoryStatusAspect.Unavailable) {
+            LOGGER.warn("Cannot free {} memory - OS memory status is unavailable", status.getName());
             // no need to free
             return false;
         }
         long totalMemory = ((OsMemoryStatusAspect.Available) status).getTotal();
         long freeMemory = ((OsMemoryStatusAspect.Available) status).getFree();
         long requestedFreeMemory = getMemoryThresholdInBytes(totalMemory) + (memoryAmountBytes > 0 ? memoryAmountBytes : 0);
+        LOGGER.warn("Detected {} memory: {} total, {} free, {} to be freed", status.getName(), totalMemory, freeMemory, requestedFreeMemory);
         long newFreeMemory = doRequestFreeMemory(status.getName(), requestedFreeMemory, freeMemory);
         return newFreeMemory > freeMemory;
     }
@@ -125,7 +127,7 @@ public class DefaultMemoryManager implements MemoryManager, Stoppable {
     private long doRequestFreeMemory(String name, long requestedFreeMemory, long freeMemory) {
         long toReleaseMemory = requestedFreeMemory;
         if (freeMemory < requestedFreeMemory) {
-            LOGGER.debug("{} {} memory requested, {} free", requestedFreeMemory, name, freeMemory);
+            LOGGER.warn("{} {} memory requested, {} free", requestedFreeMemory, name, freeMemory);
             List<MemoryHolder> memoryHolders;
             synchronized (holdersLock) {
                 memoryHolders = new ArrayList<MemoryHolder>(holders);
@@ -139,7 +141,7 @@ public class DefaultMemoryManager implements MemoryManager, Stoppable {
                 }
             }
 
-            LOGGER.debug("{} {} memory requested, {} released, {} free", requestedFreeMemory, name, requestedFreeMemory - toReleaseMemory, freeMemory);
+            LOGGER.warn("{} {} memory requested, {} released, {} free", requestedFreeMemory, name, requestedFreeMemory - toReleaseMemory, freeMemory);
         }
         return freeMemory;
     }
@@ -161,7 +163,7 @@ public class DefaultMemoryManager implements MemoryManager, Stoppable {
             } catch (Throwable t) {
                 // this class is used as task in a scheduled executor service, so it must not throw any throwable,
                 // otherwise the further invocations of this task get automatically and silently cancelled
-                LOGGER.debug("Failed to collect memory status: {}", t.getMessage(), t);
+                LOGGER.warn("Failed to collect memory status: {}", t.getMessage(), t);
             }
         }
     }
