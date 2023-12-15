@@ -248,8 +248,8 @@ val Project.precompiledScriptPluginsSupport
 
 private
 data class KotlinDslScriptsParameter(
-    var correlationId: String?,
-    var scriptFiles: List<File>
+    val correlationId: String?,
+    val scriptFiles: List<File>
 )
 
 
