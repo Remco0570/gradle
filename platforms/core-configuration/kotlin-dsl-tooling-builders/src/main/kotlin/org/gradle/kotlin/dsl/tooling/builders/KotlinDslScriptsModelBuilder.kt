@@ -22,7 +22,6 @@ import org.gradle.internal.resources.ProjectLeaseRegistry
 import org.gradle.internal.time.Time
 import org.gradle.kotlin.dsl.provider.PrecompiledScriptPluginsSupport
 import org.gradle.kotlin.dsl.support.serviceOf
-import org.gradle.kotlin.dsl.tooling.models.KotlinBuildScriptModel
 import org.gradle.tooling.model.kotlin.dsl.EditorPosition
 import org.gradle.tooling.model.kotlin.dsl.EditorReport
 import org.gradle.tooling.model.kotlin.dsl.EditorReportSeverity
@@ -52,7 +51,7 @@ data class StandardKotlinDslScriptsModel(
         }
 
     companion object {
-        fun from(scriptModels: Map<File, KotlinBuildScriptModel>): StandardKotlinDslScriptsModel {
+        fun from(scriptModels: Map<File, KotlinDslScriptModel>): StandardKotlinDslScriptsModel {
             val commonClassPath = commonPrefixOf(scriptModels.values.map { it.classPath })
             val commonSourcePath = commonPrefixOf(scriptModels.values.map { it.sourcePath })
             val commonImplicitImports = commonPrefixOf(scriptModels.values.map { it.implicitImports })
@@ -64,7 +63,7 @@ data class StandardKotlinDslScriptsModel(
                     model.classPath.drop(commonClassPath.size),
                     model.sourcePath.drop(commonSourcePath.size),
                     model.implicitImports.drop(commonImplicitImports.size),
-                    mapEditorReports(model.editorReports),
+                    model.editorReports,
                     model.exceptions
                 )
             }
@@ -173,13 +172,26 @@ object KotlinDslScriptsModelBuilder : AbstractKotlinDslScriptsModelBuilder() {
 
     override fun buildFor(parameter: KotlinDslScriptsParameter, rootProject: Project): KotlinDslScriptsModel {
         val scriptModels = parameter.scriptFiles.associateWith { scriptFile ->
-            KotlinBuildScriptModelBuilder.kotlinBuildScriptModelFor(
-                rootProject,
-                KotlinBuildScriptModelParameter(scriptFile, parameter.correlationId)
-            )
+            buildScriptModel(rootProject, scriptFile, parameter)
         }
-
         return StandardKotlinDslScriptsModel.from(scriptModels)
+    }
+
+    private fun buildScriptModel(
+        rootProject: Project,
+        scriptFile: File,
+        parameter: KotlinDslScriptsParameter
+    ): StandardKotlinDslScriptModel {
+
+        val scriptModelParameter = KotlinBuildScriptModelParameter(scriptFile, parameter.correlationId)
+        val scriptModel = KotlinBuildScriptModelBuilder.kotlinBuildScriptModelFor(rootProject, scriptModelParameter)
+        return StandardKotlinDslScriptModel(
+            scriptModel.classPath,
+            scriptModel.sourcePath,
+            scriptModel.implicitImports,
+            mapEditorReports(scriptModel.editorReports),
+            scriptModel.exceptions
+        )
     }
 }
 
