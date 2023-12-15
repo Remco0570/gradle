@@ -16,28 +16,25 @@
 package org.gradle.kotlin.dsl.tooling.builders
 
 import org.gradle.api.internal.project.ProjectInternal
+
 import org.gradle.configuration.project.ProjectConfigureAction
-import org.gradle.internal.buildtree.BuildModelParameters
+
 import org.gradle.kotlin.dsl.support.serviceOf
-import org.gradle.kotlin.dsl.tooling.builders.internal.DiscoveredKotlinScriptsModelBuilder
+
 import org.gradle.tooling.model.kotlin.dsl.KotlinDslModelsParameters
 import org.gradle.tooling.provider.model.ToolingModelBuilderRegistry
-import org.gradle.tooling.provider.model.internal.IntermediateToolingModelProvider
 
 
 class KotlinScriptingModelBuildersRegistrationAction : ProjectConfigureAction {
 
     override fun execute(project: ProjectInternal) {
-        val builders = project.serviceOf<ToolingModelBuilderRegistry>()
-        val intermediateToolingModelProvider = project.serviceOf<IntermediateToolingModelProvider>()
 
+        val builders = project.serviceOf<ToolingModelBuilderRegistry>()
         builders.register(KotlinBuildScriptModelBuilder)
         builders.register(KotlinBuildScriptTemplateModelBuilder)
-        builders.register(DiscoveredKotlinScriptsModelBuilder)
 
         if (project.parent == null) {
-            val isolatedProjects = project.serviceOf<BuildModelParameters>().isIsolatedProjects
-            builders.register(KotlinDslScriptsModelBuilder(isolatedProjects, intermediateToolingModelProvider))
+            builders.register(KotlinDslScriptsModelBuilder)
             project.tasks.register(KotlinDslModelsParameters.PREPARATION_TASK_NAME)
         }
     }

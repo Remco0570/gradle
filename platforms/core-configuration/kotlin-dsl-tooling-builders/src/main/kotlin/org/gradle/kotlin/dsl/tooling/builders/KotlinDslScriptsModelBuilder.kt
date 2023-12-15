@@ -20,8 +20,8 @@ import org.gradle.api.Project
 import org.gradle.api.internal.project.ProjectInternal
 import org.gradle.internal.resources.ProjectLeaseRegistry
 import org.gradle.internal.time.Time
+import org.gradle.kotlin.dsl.provider.PrecompiledScriptPluginsSupport
 import org.gradle.kotlin.dsl.support.serviceOf
-import org.gradle.kotlin.dsl.tooling.builders.internal.DiscoveredKotlinScriptsModel
 import org.gradle.kotlin.dsl.tooling.models.KotlinBuildScriptModel
 import org.gradle.tooling.model.kotlin.dsl.EditorPosition
 import org.gradle.tooling.model.kotlin.dsl.EditorReport
@@ -30,7 +30,6 @@ import org.gradle.tooling.model.kotlin.dsl.KotlinDslModelsParameters
 import org.gradle.tooling.model.kotlin.dsl.KotlinDslScriptModel
 import org.gradle.tooling.model.kotlin.dsl.KotlinDslScriptsModel
 import org.gradle.tooling.provider.model.ToolingModelBuilder
-import org.gradle.tooling.provider.model.internal.IntermediateToolingModelProvider
 import java.io.File
 import java.io.Serializable
 
@@ -125,10 +124,7 @@ data class StandardEditorPosition(
 
 
 internal
-class KotlinDslScriptsModelBuilder(
-    private val isolatedProjects: Boolean,
-    private val intermediateToolingModelProvider: IntermediateToolingModelProvider
-) : ToolingModelBuilder {
+object KotlinDslScriptsModelBuilder : ToolingModelBuilder {
 
     override fun canBuild(modelName: String): Boolean =
         modelName == "org.gradle.tooling.model.kotlin.dsl.KotlinDslScriptsModel"
@@ -136,7 +132,7 @@ class KotlinDslScriptsModelBuilder(
     override fun buildAll(modelName: String, project: Project): KotlinDslScriptsModel {
         requireRootProject(project)
         val timer = Time.startTimer()
-        val parameter = project.parameterFromRequest(isolatedProjects, intermediateToolingModelProvider)
+        val parameter = project.parameterFromRequest()
         try {
             return project.leaseRegistry.allowUncontrolledAccessToAnyProject {
                 buildFor(parameter, project).also {
@@ -161,11 +157,10 @@ class KotlinDslScriptsModelBuilder(
 
     private
     fun buildFor(parameter: KotlinDslScriptsParameter, project: Project): KotlinDslScriptsModel {
-        val targetScripts = parameter.targetScripts.scripts
-        val scriptModels = targetScripts.associateBy(TargetScript::script) { scriptFile ->
+        val scriptModels = parameter.scriptFiles.associateWith { scriptFile ->
             KotlinBuildScriptModelBuilder.kotlinBuildScriptModelFor(
                 project,
-                KotlinBuildScriptModelParameter(scriptFile.script, parameter.correlationId)
+                KotlinBuildScriptModelParameter(scriptFile, parameter.correlationId)
             )
         }
 
@@ -183,10 +178,10 @@ data class CommonKotlinDslScriptModel(
 
 
 private
-fun Project.parameterFromRequest(isolatedProjects: Boolean, intermediateToolingModelProvider: IntermediateToolingModelProvider): KotlinDslScriptsParameter =
+fun Project.parameterFromRequest(): KotlinDslScriptsParameter =
     KotlinDslScriptsParameter(
         resolveCorrelationIdParameter(),
-        resolveScriptsParameter(isolatedProjects, intermediateToolingModelProvider)
+        resolveScriptsParameter()
     )
 
 
@@ -196,81 +191,65 @@ fun Project.resolveCorrelationIdParameter(): String? =
 
 
 private
-fun Project.resolveScriptsParameter(isolatedProjects: Boolean, intermediateToolingModelProvider: IntermediateToolingModelProvider): TargetScripts {
-    val explicitTargetScripts = resolveExplicitScriptsParameter()
-    if (!explicitTargetScripts.isNullOrEmpty()) {
-        check(!isolatedProjects) {
-            "Using ${KotlinDslScriptsModel.SCRIPTS_GRADLE_PROPERTY_NAME} is not supported with Isolated Projects"
-        }
-
-        return TargetScripts(explicitTargetScripts, resolvedOwners = false)
-    }
-
-    val discoveredScripts = collectKotlinDslScripts(intermediateToolingModelProvider)
-    return TargetScripts(discoveredScripts, resolvedOwners = true)
-}
+fun Project.resolveScriptsParameter(): List<File> =
+    resolveExplicitScriptsParameter()
+        ?.takeIf { it.isNotEmpty() }
+        ?: collectKotlinDslScripts()
 
 
 private
-fun Project.resolveExplicitScriptsParameter(): List<TargetScript>? =
+fun Project.resolveExplicitScriptsParameter(): List<File>? =
     (findProperty(KotlinDslScriptsModel.SCRIPTS_GRADLE_PROPERTY_NAME) as? String)
         ?.split("|")
         ?.asSequence()
         ?.filter { it.isNotBlank() }
         ?.map(::canonicalFile)
         ?.filter { it.isFile }
-        ?.map { TargetScript(it) }
         ?.toList()
 
 
 // TODO:kotlin-dsl naive implementation for now, refine
 private
-fun Project.collectKotlinDslScripts(intermediateToolingModelProvider: IntermediateToolingModelProvider): List<TargetScript> = sequence {
+fun Project.collectKotlinDslScripts(): List<File> = sequence<File> {
+
     // Init Scripts
     project
         .gradle
         .startParameter
         .allInitScripts
-        .filter(File::isFile)
         .filter { it.isKotlinDslFile }
-        .forEach { yield(TargetScript(it)) }
+        .forEach { yield(it) }
 
     // Settings Script
     val settingsScriptFile = File((project as ProjectInternal).gradle.settings.settingsScript.fileName)
     if (settingsScriptFile.isKotlinDslFile) {
-        yield(TargetScript(settingsScriptFile))
+        yield(settingsScriptFile)
     }
 
-    val allProjects = allprojects.toList()
-    val scriptsModels =
-        intermediateToolingModelProvider.getModels(project, allProjects, DiscoveredKotlinScriptsModel::class.java, null)
+    allprojects.forEach { p ->
 
-    allProjects.zip(scriptsModels).forEach { (ownerProject, scriptsModel) ->
-        scriptsModel.scripts.forEach {
-            yield(TargetScript(it, ownerProject))
+        // Project Scripts
+        if (p.buildFile.isKotlinDslFile) {
+            yield(p.buildFile)
+        }
+
+        // Precompiled Scripts
+        if (p.plugins.hasPlugin("org.gradle.kotlin.kotlin-dsl")) {
+            yieldAll(p.precompiledScriptPluginsSupport.collectScriptPluginFilesOf(p))
         }
     }
 }.toList()
 
 
 private
-data class TargetScript(
-    val script: File,
-    val ownerProject: Project? = null
-)
+val Project.precompiledScriptPluginsSupport
+    get() = serviceOf<PrecompiledScriptPluginsSupport>()
 
 
 private
 data class KotlinDslScriptsParameter(
-    val correlationId: String?,
-    val targetScripts: TargetScripts
-)
-
-
-private
-data class TargetScripts(
-    val scripts: List<TargetScript>,
-    val resolvedOwners: Boolean
+    var correlationId: String?,
+    var scriptFiles: List<File>
 )
 
 
