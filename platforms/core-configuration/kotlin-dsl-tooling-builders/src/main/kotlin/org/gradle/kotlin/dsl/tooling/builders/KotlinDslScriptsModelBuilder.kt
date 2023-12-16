@@ -33,7 +33,7 @@ import java.io.File
 import java.io.Serializable
 
 
-private
+internal
 data class StandardKotlinDslScriptsModel(
     private val commonModel: CommonKotlinDslScriptModel,
     private val dehydratedScriptModels: Map<File, KotlinDslScriptModel>
@@ -177,7 +177,8 @@ object KotlinDslScriptsModelBuilder : AbstractKotlinDslScriptsModelBuilder() {
         return StandardKotlinDslScriptsModel.from(scriptModels)
     }
 
-    private fun buildScriptModel(
+    private
+    fun buildScriptModel(
         rootProject: Project,
         scriptFile: File,
         parameter: KotlinDslScriptsParameter
@@ -196,7 +197,7 @@ object KotlinDslScriptsModelBuilder : AbstractKotlinDslScriptsModelBuilder() {
 }
 
 
-private
+internal
 data class CommonKotlinDslScriptModel(
     val classPath: List<File>,
     val sourcePath: List<File>,
@@ -212,7 +213,7 @@ fun Project.parameterFromRequest(): KotlinDslScriptsParameter =
     )
 
 
-private
+internal
 fun Project.resolveCorrelationIdParameter(): String? =
     findProperty(KotlinDslModelsParameters.CORRELATION_ID_GRADLE_PROPERTY_NAME) as? String
 
